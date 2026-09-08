@@ -395,22 +395,6 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
     var isNew = state.isNewOrder;
     var h = '';
     h += '<form id="orderForm" novalidate>';
-    h += '<div class="section-title">订单信息' + (isNew ? '（新增）' : '（编辑）') + '</div>';
-    h += '<div class="form-row">';
-    h += '<div class="form-group"><label>订单号 *</label><input type="text" name="订单号" value="' + escapeHtml(order['订单号']) + '" maxlength="100"><div class="field-error"></div></div>';
-    h += '<div class="form-group"><label>订单名称 *</label><input type="text" name="订单名称" value="' + escapeHtml(order['订单名称']) + '" maxlength="50"><div class="field-error"></div></div>';
-    h += '</div>';
-    h += '<div class="form-row">';
-    h += '<div class="form-group"><label>供应商 *</label><input type="text" name="供应商" value="' + escapeHtml(order['供应商']) + '" maxlength="100"><div class="field-error"></div></div>';
-    h += '<div class="form-group"><label>优先级 *</label><select name="优先级"><option value="高"' + (order['优先级'] === '高' ? ' selected' : '') + '>高</option><option value="中"' + (order['优先级'] === '中' ? ' selected' : '') + '>中</option><option value="低"' + (order['优先级'] === '低' ? ' selected' : '') + '>低</option></select></div>';
-    h += '</div>';
-    h += '<div class="form-row">';
-    h += '<div class="form-group"><label>下单日期 *</label><input type="text" name="下单日期" value="' + escapeHtml(order['下单日期']) + '" placeholder="YYYY-MM-DD"><div class="field-error"></div></div>';
-    if (!isNew && order['最后修改时间']) {
-      h += '<div class="form-group"><label>最后修改时间</label><div style="padding:6px 0;font-size:14px;color:#666">' + escapeHtml(order['最后修改时间'].replace('T', ' ')) + '</div></div>';
-    }
-    h += '</div>';
-    h += '<div class="form-group"><label>备注</label><textarea name="备注" maxlength="500">' + escapeHtml(order['备注'] || '') + '</textarea></div>';
     h += '<div class="section-title">物料明细</div>';
     h += '<div class="table-scroll"><table class="material-table" id="materialTable"><thead><tr>';
     h += '<th>零件名称</th><th>图号</th><th>图版</th><th style="width:80px">数量</th><th style="width:130px">承诺交期</th><th style="width:100px">当前状态</th><th style="width:80px">操作</th>';
@@ -438,6 +422,22 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
       }
       h += '</div>';
     }
+    h += '<div class="section-title">订单信息' + (isNew ? '（新增）' : '（编辑）') + '</div>';
+    h += '<div class="form-row">';
+    h += '<div class="form-group"><label>订单号 *</label><input type="text" name="订单号" value="' + escapeHtml(order['订单号']) + '" maxlength="100"><div class="field-error"></div></div>';
+    h += '<div class="form-group"><label>订单名称 *</label><input type="text" name="订单名称" value="' + escapeHtml(order['订单名称']) + '" maxlength="50"><div class="field-error"></div></div>';
+    h += '</div>';
+    h += '<div class="form-row">';
+    h += '<div class="form-group"><label>供应商 *</label><input type="text" name="供应商" value="' + escapeHtml(order['供应商']) + '" maxlength="100"><div class="field-error"></div></div>';
+    h += '<div class="form-group"><label>优先级 *</label><select name="优先级"><option value="高"' + (order['优先级'] === '高' ? ' selected' : '') + '>高</option><option value="中"' + (order['优先级'] === '中' ? ' selected' : '') + '>中</option><option value="低"' + (order['优先级'] === '低' ? ' selected' : '') + '>低</option></select></div>';
+    h += '</div>';
+    h += '<div class="form-row">';
+    h += '<div class="form-group"><label>下单日期 *</label><input type="text" name="下单日期" value="' + escapeHtml(order['下单日期']) + '" placeholder="YYYY-MM-DD"><div class="field-error"></div></div>';
+    if (!isNew && order['最后修改时间']) {
+      h += '<div class="form-group"><label>最后修改时间</label><div style="padding:6px 0;font-size:14px;color:#666">' + escapeHtml(order['最后修改时间'].replace('T', ' ')) + '</div></div>';
+    }
+    h += '</div>';
+    h += '<div class="form-group"><label>备注</label><textarea name="备注" maxlength="500">' + escapeHtml(order['备注'] || '') + '</textarea></div>';
     h += '<div class="form-actions">';
     h += '<button type="button" class="btn-primary" id="btnSaveOrder">保存</button>';
     h += '<button type="button" id="btnCancelEdit">取消</button>';
