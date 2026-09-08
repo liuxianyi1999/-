@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>订单跟踪工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-size:14px;color:#333;background:#fff;line-height:1.5}
+#header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:2px solid #ddd;padding:8px 16px;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+#header h1{font-size:18px;font-weight:bold;margin-right:16px;white-space:nowrap}
+.view-tabs{display:flex;gap:0}
+.view-tab{padding:6px 16px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-size:14px}
+.view-tab:first-child{border-radius:4px 0 0 4px}
+.view-tab:last-child{border-radius:0 4px 4px 0}
+.view-tab.active{background:#333;color:#fff;border-color:#333}
+.view-tab.disabled{color:#aaa;cursor:default}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.header-right button{padding:6px 12px;cursor:pointer;border:1px solid #ccc;background:#f5f5f5;font-size:14px}
+.header-right button:hover{background:#e5e5e5}
+#dataInfo{font-size:13px;color:#666;white-space:nowrap}
+#main{padding:16px}
+.toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.toolbar input[type="text"]{padding:6px 10px;border:1px solid #ccc;font-size:14px;width:240px}
+.toolbar select{padding:6px 10px;border:1px solid #ccc;font-size:14px}
+.btn-primary{padding:6px 16px;background:#333;color:#fff;border:none;cursor:pointer;font-size:14px}
+.btn-primary:hover{background:#555}
+.btn-danger{padding:6px 16px;background:#c00;color:#fff;border:none;cursor:pointer;font-size:14px}
+.btn-danger:hover{background:#e00}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 12px;border:1px solid #ddd;text-align:left;font-size:14px;min-height:36px;vertical-align:middle}
+th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
+.col-sort{cursor:pointer;user-select:none}
+.col-sort:hover{background:#e8e8e8}
+.order-row{cursor:pointer}
+.order-row:hover{background:#f9f9f9}
+.status-badge{display:inline-block;padding:2px 8px;font-size:13px;white-space:nowrap}
+.st-待排产{background:#e8e8e8;color:#333}
+.st-加工中{background:#d0e8ff;color:#000}
+.st-外协中{background:#e8d0ff;color:#000}
+.st-待检{background:#fff3cd;color:#000}
+.st-已完成{background:#28a745;color:#fff}
+.st-已取消{background:#ccc;color:#888}
+.st-逾期{background:#dc3545;color:#fff}
+.st-临期{background:#ffc107;color:#000}
+.expand-area{background:#fafafa}
+.expand-area>td{padding:16px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-weight:bold;margin-bottom:4px;font-size:14px}
+.form-group input,.form-group select,.form-group textarea{padding:6px 10px;border:1px solid #ccc;font-size:14px;width:100%;font-family:inherit}
+.form-group textarea{min-height:60px;resize:vertical}
+.form-row{display:flex;gap:12px;flex-wrap:wrap}
+.form-row .form-group{flex:1;min-width:180px}
+.field-error{color:#c00;font-size:13px;margin-top:2px}
+.material-table input,.material-table select{padding:4px 6px;border:1px solid #ccc;font-size:14px;width:100%}
+.material-table th{font-size:13px}
+.btn-sm{padding:4px 10px;cursor:pointer;border:1px solid #ccc;background:#f5f5f5;font-size:13px}
+.btn-sm:hover{background:#e5e5e5}
+.btn-remove{color:#c00;border-color:#c00;background:#fff}
+.btn-remove:hover{background:#fee}
+.form-actions{margin-top:16px;display:flex;gap:8px;align-items:center}
+.form-actions button{padding:8px 20px;cursor:pointer;font-size:14px}
+.history-section{margin-top:16px;border-top:1px solid #ddd;padding-top:12px}
+.history-section h4{margin-bottom:8px;font-size:14px}
+.history-item{padding:4px 0;font-size:13px;border-bottom:1px solid #eee}
+.pager{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;padding:8px 0}
+.pager button{padding:4px 12px;cursor:pointer;border:1px solid #ccc;background:#f5f5f5;font-size:14px}
+.pager button:disabled{opacity:.5;cursor:default}
+.pager span{font-size:14px}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:200;justify-content:center;align-items:center}
+.modal-overlay.active{display:flex}
+.modal-box{background:#fff;padding:24px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto}
+.modal-box h3{margin-bottom:16px;font-size:16px}
+.modal-box p{margin-bottom:8px;font-size:14px}
+.modal-box input[type="text"]{padding:6px 10px;border:1px solid #ccc;font-size:14px;width:100%;margin:8px 0}
+.modal-actions{margin-top:16px;display:flex;gap:8px;justify-content:flex-end}
+.modal-actions button{padding:8px 16px;cursor:pointer;font-size:14px}
+.import-result{margin-top:12px;padding:8px;background:#f5f5f5;font-size:14px}
+.empty-state{text-align:center;padding:60px 20px}
+.empty-state p{font-size:16px;margin-bottom:16px;color:#666}
+.empty-state button{padding:10px 24px;font-size:16px;background:#333;color:#fff;border:none;cursor:pointer}
+.section-title{font-size:15px;font-weight:bold;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #ddd}
+@media(max-width:768px){
+  #header{flex-direction:column;align-items:flex-start}
+  .header-right{margin-left:0;width:100%}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .toolbar input[type="text"]{width:100%}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .form-row{flex-direction:column}
+  .form-row .form-group{min-width:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>订单跟踪工具</h1>
+  <div class="view-tabs">
+    <button class="view-tab disabled" id="tabWarning">今日预警</button>
+    <button class="view-tab active" id="tabOrders">全部订单</button>
+    <button class="view-tab disabled" id="tabStats">月度统计</button>
+  </div>
+  <div class="header-right">
+    <span id="dataInfo"></span>
+    <button id="btnExport">导出备份</button>
+    <button id="btnImport">导入备份</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="viewOrders">
+    <div class="toolbar" id="toolbar">
+      <input type="text" id="searchInput" placeholder="搜索订单号、订单名称、供应商、零件名称、图号、备注">
+      <select id="statusFilter">
+        <option value="" selected>全部状态</option>
+        <option value="待排产">待排产</option>
+        <option value="加工中">加工中</option>
+        <option value="外协中">外协中</option>
+        <option value="待检">待检</option>
+        <option value="已完成">已完成</option>
+        <option value="已取消">已取消</option>
+      </select>
+      <select id="priorityFilter">
+        <option value="" selected>全部优先级</option>
+        <option value="高">高</option>
+        <option value="中">中</option>
+        <option value="低">低</option>
+      </select>
+      <button class="btn-primary" id="btnNewOrder">新增订单</button>
+    </div>
+    <div id="orderListContainer"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+  <div class="modal-box">
+    <h3>导入备份</h3>
+    <div id="importInfo"></div>
+    <div style="margin:12px 0">
+      <label><input type="radio" name="importMode" value="merge" checked> 合并（以订单号为键，文件中已有的替换，没有的新增，本地多出的保留）</label><br>
+      <label><input type="radio" name="importMode" value="overwrite"> 覆盖（清空现有数据）</label>
+    </div>
+    <div id="overwriteConfirm" style="display:none">
+      <p style="color:#c00">请在下方输入"确认覆盖"以确认操作：</p>
+      <input type="text" id="confirmInput" placeholder="输入：确认覆盖">
+    </div>
+    <div class="modal-actions">
+      <button id="importCancelBtn">取消</button>
+      <button class="btn-primary" id="importConfirmBtn">确定导入</button>
+    </div>
+    <div id="importResult" class="import-result" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var DATA_KEY = 'ORDER_TOOL_DATA';
+  var BACKUP_KEY = 'ORDER_TOOL_BACKUP_AUTO';
+  var SUPPORTED_VERSION = 1;
+  var PAGE_SIZE = 50;
+  var STATUSES = ['待排产', '加工中', '外协中', '待检', '已完成', '已取消'];
+
+  var state = {
+    data: { version: 1, orders: [] },
+    currentView: 'orders',
+    expandedOrderId: null,
+    isNewOrder: false,
+    searchQuery: '',
+    statusFilter: '',
+    priorityFilter: '',
+    currentPage: 1,
+    sortField: '下单日期',
+    sortDir: 'desc',
+    importFileData: null
+  };
+
+  function loadData() {
+    var raw = localStorage.getItem(DATA_KEY);
+    if (!raw) {
+      state.data = { version: SUPPORTED_VERSION, orders: [] };
+      return true;
+    }
+    try {
+      var parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.orders)) {
+        state.data = parsed;
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveData() {
+    try {
+      localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
+    } catch (e) {
+      alert('数据保存失败，请立即导出备份');
+    }
+  }
+
+  function generateId() {
+    var r = Math.random().toString(36).substring(2, 6);
+    return 'o_' + Date.now() + '_' + r;
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  function nowIso() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    var h = String(d.getHours()).padStart(2, '0');
+    var mi = String(d.getMinutes()).padStart(2, '0');
+    var s = String(d.getSeconds()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day + 'T' + h + ':' + mi + ':' + s;
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function relativeTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso.replace('T', ' '));
+    var now = new Date();
+    var diffMs = now - d;
+    var diffDays = Math.floor(diffMs / 86400000);
+    var diffHours = Math.floor(diffMs / 3600000);
+    if (diffDays > 0) return diffDays + ' 天前';
+    if (diffHours > 0) return diffHours + ' 小时前';
+    return '刚刚';
+  }
+
+  function computeSummaryStatus(order) {
+    var today = todayStr();
+    var hasOverdue = false, hasActive = false;
+    var activeStatuses = [];
+    for (var i = 0; i < order.物料明细.length; i++) {
+      var m = order.物料明细[i];
+      var st = m['当前状态'];
+      if (st === '已完成' || st === '已取消') continue;
+      hasActive = true;
+      activeStatuses.push(st);
+      if (m['承诺交期'] < today) hasOverdue = true;
+    }
+    if (hasOverdue) return '逾期';
+    if (!hasActive) {
+      if (order.物料明细.length === 0) return '待排产';
+      var allCompleted = order.物料明细.every(function(m) { return m['当前状态'] === '已完成'; });
+      if (allCompleted) return '已完成';
+      return '已取消';
+    }
+    var priority = { '加工中': 1, '外协中': 2, '待检': 3, '待排产': 4 };
+    var best = '待排产', bestP = 99;
+    for (var j = 0; j < activeStatuses.length; j++) {
+      var p = priority[activeStatuses[j]];
+      if (p !== undefined && p < bestP) { bestP = p; best = activeStatuses[j]; }
+    }
+    return best;
+  }
+
+  function computeEarliestDelivery(order) {
+    var earliest = '';
+    for (var i = 0; i < order.物料明细.length; i++) {
+      var d = order.物料明细[i]['承诺交期'];
+      if (d && (!earliest || d < earliest)) earliest = d;
+    }
+    return earliest;
+  }
+
+  function renderHeader() {
+    var count = state.data.orders.length;
+    var lastSave = '';
+    if (count > 0) {
+      var latest = '';
+      for (var i = 0; i < state.data.orders.length; i++) {
+        var t = state.data.orders[i]['最后修改时间'];
+        if (t && (!latest || t > latest)) latest = t;
+      }
+      if (latest) {
+        var d = new Date(latest.replace('T', ' '));
+        lastSave = '，最后保存于 ' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      }
+    }
+    document.getElementById('dataInfo').textContent = '共 ' + count + ' 条订单' + lastSave;
+  }
+
+  function getFilteredOrders() {
+    var orders = state.data.orders.slice();
+    var q = state.searchQuery.toLowerCase();
+    if (q) {
+      orders = orders.filter(function(o) {
+        if (o['订单号'].toLowerCase().indexOf(q) !== -1) return true;
+        if (o['订单名称'].toLowerCase().indexOf(q) !== -1) return true;
+        if (o['供应商'].toLowerCase().indexOf(q) !== -1) return true;
+        if ((o['备注'] || '').toLowerCase().indexOf(q) !== -1) return true;
+        for (var i = 0; i < o.物料明细.length; i++) {
+          if (o.物料明细[i]['零件名称'].toLowerCase().indexOf(q) !== -1) return true;
+          if (o.物料明细[i]['图号'].toLowerCase().indexOf(q) !== -1) return true;
+        }
+        return false;
+      });
+    }
+    if (state.statusFilter) {
+      orders = orders.filter(function(o) {
+        return o.物料明细.some(function(m) {
+          return m['当前状态'] === state.statusFilter;
+        });
+      });
+    }
+    if (state.priorityFilter) {
+      orders = orders.filter(function(o) {
+        return o['优先级'] === state.priorityFilter;
+      });
+    }
+    var field = state.sortField;
+    var dir = state.sortDir === 'asc' ? 1 : -1;
+    orders.sort(function(a, b) {
+      var va, vb;
+      if (field === '最近承诺交期') {
+        va = computeEarliestDelivery(a) || '9999-12-31';
+        vb = computeEarliestDelivery(b) || '9999-12-31';
+      } else {
+        va = a[field] || '';
+        vb = b[field] || '';
+      }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+    return orders;
+  }
+
+  function renderOrderList() {
+    var container = document.getElementById('orderListContainer');
+    if (state.data.orders.length === 0 && !state.isNewOrder) {
+      container.innerHTML = '<div class="empty-state"><p>还没有任何订单</p><button onclick="document.getElementById(\'btnNewOrder\').click()">新增第一条订单</button></div>';
+      return;
+    }
+    var filtered = getFilteredOrders();
+    var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (state.currentPage > totalPages) state.currentPage = totalPages;
+    var start = (state.currentPage - 1) * PAGE_SIZE;
+    var pageOrders = filtered.slice(start, start + PAGE_SIZE);
+    var sortIcon = function(f) {
+      if (state.sortField !== f) return ' ';
+      return state.sortDir === 'asc' ? ' ↑' : ' ↓';
+    };
+    var html = '<div class="table-scroll"><table><thead><tr>';
+    html += '<th style="width:180px">订单号</th>';
+    html += '<th style="width:160px">订单名称</th>';
+    html += '<th style="width:120px">供应商</th>';
+    html += '<th style="width:100px">当前状态</th>';
+    html += '<th class="col-sort" data-sort="最近承诺交期" style="width:120px">最近承诺交期' + sortIcon('最近承诺交期') + '</th>';
+    html += '</tr></thead><tbody>';
+    for (var i = 0; i < pageOrders.length; i++) {
+      var o = pageOrders[i];
+      var summary = computeSummaryStatus(o);
+      var earliest = computeEarliestDelivery(o);
+      var isExpanded = state.expandedOrderId === o.id;
+      html += '<tr class="order-row" data-id="' + escapeHtml(o.id) + '">';
+      html += '<td>' + escapeHtml(o['订单号']) + '</td>';
+      html += '<td>' + escapeHtml(o['订单名称']) + '</td>';
+      html += '<td>' + escapeHtml(o['供应商']) + '</td>';
+      html += '<td><span class="status-badge st-' + summary + '">' + summary + '</span></td>';
+      html += '<td>' + escapeHtml(earliest) + '</td>';
+      html += '</tr>';
+      if (isExpanded) {
+        html += '<tr class="expand-area"><td colspan="5">' + renderEditForm(o) + '</td></tr>';
+      }
+    }
+    if (state.isNewOrder && state.expandedOrderId === '__new__') {
+      html += '<tr class="expand-area"><td colspan="5">' + renderEditForm({ '订单号': '', '订单名称': '', '供应商': '', '优先级': '中', '下单日期': '', '备注': '', '物料明细': [emptyMaterial()] }) + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    html += '<div class="pager">';
+    html += '<button data-page="prev"' + (state.currentPage <= 1 ? ' disabled' : '') + '>上一页</button>';
+    html += '<span>共 ' + filtered.length + ' 条订单 / 第 ' + state.currentPage + ' 页 / 共 ' + totalPages + ' 页</span>';
+    html += '<button data-page="next"' + (state.currentPage >= totalPages ? ' disabled' : '') + '>下一页</button>';
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  function renderEditForm(order) {
+    var isNew = state.isNewOrder;
+    var h = '';
+    h += '<form id="orderForm" novalidate>';
+    h += '<div class="section-title">订单信息' + (isNew ? '（新增）' : '（编辑）') + '</div>';
+    h += '<div class="form-row">';
+    h += '<div class="form-group"><label>订单号 *</label><input type="text" name="订单号" value="' + escapeHtml(order['订单号']) + '" maxlength="100"><div class="field-error"></div></div>';
+    h += '<div class="form-group"><label>订单名称 *</label><input type="text" name="订单名称" value="' + escapeHtml(order['订单名称']) + '" maxlength="50"><div class="field-error"></div></div>';
+    h += '</div>';
+    h += '<div class="form-row">';
+    h += '<div class="form-group"><label>供应商 *</label><input type="text" name="供应商" value="' + escapeHtml(order['供应商']) + '" maxlength="100"><div class="field-error"></div></div>';
+    h += '<div class="form-group"><label>优先级 *</label><select name="优先级"><option value="高"' + (order['优先级'] === '高' ? ' selected' : '') + '>高</option><option value="中"' + (order['优先级'] === '中' ? ' selected' : '') + '>中</option><option value="低"' + (order['优先级'] === '低' ? ' selected' : '') + '>低</option></select></div>';
+    h += '</div>';
+    h += '<div class="form-row">';
+    h += '<div class="form-group"><label>下单日期 *</label><input type="text" name="下单日期" value="' + escapeHtml(order['下单日期']) + '" placeholder="YYYY-MM-DD"><div class="field-error"></div></div>';
+    if (!isNew && order['最后修改时间']) {
+      h += '<div class="form-group"><label>最后修改时间</label><div style="padding:6px 0;font-size:14px;color:#666">' + escapeHtml(order['最后修改时间'].replace('T', ' ')) + '</div></div>';
+    }
+    h += '</div>';
+    h += '<div class="form-group"><label>备注</label><textarea name="备注" maxlength="500">' + escapeHtml(order['备注'] || '') + '</textarea></div>';
+    h += '<div class="section-title">物料明细</div>';
+    h += '<div class="table-scroll"><table class="material-table" id="materialTable"><thead><tr>';
+    h += '<th>零件名称</th><th>图号</th><th>图版</th><th style="width:80px">数量</th><th style="width:130px">承诺交期</th><th style="width:100px">当前状态</th><th style="width:80px">操作</th>';
+    h += '</tr></thead><tbody>';
+    for (var i = 0; i < order.物料明细.length; i++) {
+      h += renderMaterialRow(order.物料明细[i], i);
+    }
+    h += '</tbody></table></div>';
+    h += '<button type="button" class="btn-sm" id="btnAddMaterial" style="margin-top:8px">+ 添加物料</button>';
+    if (!isNew && order.物料明细.length > 0) {
+      h += '<div class="history-section"><h4>状态变更历史</h4>';
+      for (var j = 0; j < order.物料明细.length; j++) {
+        var mat = order.物料明细[j];
+        var hist = mat['状态变更历史'] || [];
+        if (hist.length > 0) {
+          h += '<p style="font-weight:bold;margin:8px 0 4px">' + escapeHtml(mat['零件名称']) + '（' + escapeHtml(mat['图号']) + '）</p>';
+          var sorted = hist.slice().reverse();
+          for (var k = 0; k < sorted.length; k++) {
+            var rec = sorted[k];
+            h += '<div class="history-item">' + escapeHtml(rec['时间'].replace('T', ' ')) + '：' + escapeHtml(rec['从']) + ' → ' + escapeHtml(rec['到']);
+            if (rec['操作备注']) h += '（' + escapeHtml(rec['操作备注']) + '）';
+            h += '</div>';
+          }
+        }
+      }
+      h += '</div>';
+    }
+    h += '<div class="form-actions">';
+    h += '<button type="button" class="btn-primary" id="btnSaveOrder">保存</button>';
+    h += '<button type="button" id="btnCancelEdit">取消</button>';
+    if (!isNew) {
+      h += '<button type="button" class="btn-danger" id="btnDeleteOrder" style="margin-left:auto">删除订单</button>';
+    }
+    h += '</div></form>';
+    return h;
+  }
+
+  function renderMaterialRow(m, idx) {
+    var h = '<tr data-mat-idx="' + idx + '">';
+    h += '<td><input type="text" name="零件名称" value="' + escapeHtml(m['零件名称']) + '" maxlength="50"></td>';
+    h += '<td><input type="text" name="图号" value="' + escapeHtml(m['图号']) + '" maxlength="100"></td>';
+    h += '<td><input type="text" name="图版" value="' + escapeHtml(m['图版']) + '" maxlength="20"></td>';
+    h += '<td><input type="text" name="数量" value="' + escapeHtml(String(m['数量'])) + '"></td>';
+    h += '<td><input type="text" name="承诺交期" value="' + escapeHtml(m['承诺交期']) + '" placeholder="YYYY-MM-DD"></td>';
+    h += '<td><select name="当前状态">';
+    for (var i = 0; i < STATUSES.length; i++) {
+      h += '<option value="' + STATUSES[i] + '"' + (m['当前状态'] === STATUSES[i] ? ' selected' : '') + '>' + STATUSES[i] + '</option>';
+    }
+    h += '</select></td>';
+    h += '<td><button type="button" class="btn-sm btn-remove" data-remove-mat="' + idx + '">删除</button></td>';
+    h += '</tr>';
+    return h;
+  }
+
+  function emptyMaterial() {
+    return { '零件名称': '', '图号': '', '图版': '', '数量': '', '承诺交期': '', '当前状态': '待排产', '检验结论': null, '状态变更历史': [{ '时间': nowIso(), '从': '（新建）', '到': '待排产', '操作备注': '' }] };
+  }
+
+  function collectFormData() {
+    var form = document.getElementById('orderForm');
+    if (!form) return null;
+    var data = {
+      '订单号': form.querySelector('input[name="订单号"]').value.trim(),
+      '订单名称': form.querySelector('input[name="订单名称"]').value.trim(),
+      '供应商': form.querySelector('input[name="供应商"]').value.trim(),
+      '优先级': form.querySelector('select[name="优先级"]').value,
+      '下单日期': form.querySelector('input[name="下单日期"]').value.trim(),
+      '备注': form.querySelector('textarea[name="备注"]').value
+    };
+    var materials = [];
+    var rows = form.querySelectorAll('#materialTable tbody tr');
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      materials.push({
+        '零件名称': r.querySelector('input[name="零件名称"]').value.trim(),
+        '图号': r.querySelector('input[name="图号"]').value.trim(),
+        '图版': r.querySelector('input[name="图版"]').value.trim(),
+        '数量': r.querySelector('input[name="数量"]').value.trim(),
+        '承诺交期': r.querySelector('input[name="承诺交期"]').value.trim(),
+        '当前状态': r.querySelector('select[name="当前状态"]').value,
+        '检验结论': null,
+        '状态变更历史': []
+      });
+    }
+    data.物料明细 = materials;
+    return data;
+  }
+
+  function validateForm(data, editingId) {
+    var form = document.getElementById('orderForm');
+    var errors = [];
+    form.querySelectorAll('.field-error').forEach(function(el) { el.textContent = ''; });
+    var fields = ['订单号', '订单名称', '供应商', '下单日期'];
+    for (var f = 0; f < fields.length; f++) {
+      if (!data[fields[f]]) errors.push({ field: fields[f], msg: '请填写' + fields[f] });
+    }
+    if (data['订单名称'] && data['订单名称'].length > 50) errors.push({ field: '订单名称', msg: '订单名称最多 50 个字符' });
+    for (var i = 0; i < data.物料明细.length; i++) {
+      var m = data.物料明细[i];
+      var prefix = '物料' + (i + 1);
+      if (!m['零件名称']) errors.push({ field: '零件名称', index: i, msg: prefix + '：请填写零件名称' });
+      if (!m['图号']) errors.push({ field: '图号', index: i, msg: prefix + '：请填写图号' });
+      if (!m['图版']) errors.push({ field: '图版', index: i, msg: prefix + '：请填写图版' });
+      else if (!/^[A-Z]\.\d+$/.test(m['图版'])) errors.push({ field: '图版', index: i, msg: prefix + '：图版格式应为大写字母.数字，如 A.1' });
+      if (!m['数量']) errors.push({ field: '数量', index: i, msg: prefix + '：请填写数量' });
+      else { var q = parseInt(m['数量'], 10); if (String(q) !== m['数量'] || q < 1) errors.push({ field: '数量', index: i, msg: '数量必须是不小于 1 的整数' }); }
+      if (!m['承诺交期']) errors.push({ field: '承诺交期', index: i, msg: prefix + '：请填写承诺交期' });
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(m['承诺交期'])) errors.push({ field: '承诺交期', index: i, msg: '日期格式应为 2026-09-08' });
+      if (m['零件名称'] && m['零件名称'].length > 50) errors.push({ field: '零件名称', index: i, msg: '零件名称最多 50 个字符' });
+    }
+    if (!errors.some(function(e) { return e.field === '订单号'; })) {
+      for (var j = 0; j < state.data.orders.length; j++) {
+        if (state.data.orders[j]['订单号'] === data['订单号'] && state.data.orders[j].id !== editingId) {
+          errors.push({ field: '订单号', msg: '订单号 ' + data['订单号'] + ' 已存在，请检查是否重复录入' });
+          break;
+        }
+      }
+    }
+    if (!errors.some(function(e) { return e.field === '下单日期'; }) && data['下单日期'] && !/^\d{4}-\d{2}-\d{2}$/.test(data['下单日期'])) {
+      errors.push({ field: '下单日期', msg: '日期格式应为 2026-09-08' });
+    }
+    if (data['备注'] && data['备注'].length > 500) errors.push({ field: '备注', msg: '备注最多 500 个字符' });
+    for (var k = 0; k < errors.length; k++) {
+      var err = errors[k];
+      var selector = err.index !== undefined ? 'tr[data-mat-idx="' + err.index + '"] input[name="' + err.field + '"]' : 'input[name="' + err.field + '"], textarea[name="' + err.field + '"]';
+      var input = form.querySelector(selector);
+      if (input) {
+        var container = input.closest('.form-group') || input.closest('td');
+        if (container) {
+          var errDiv = container.querySelector('.field-error');
+          if (errDiv) errDiv.textContent = err.msg;
+        }
+      }
+    }
+    if (errors.length > 0) {
+      var firstErr = errors[0];
+      var firstSelector = firstErr.index !== undefined ? '#materialTable tr[data-mat-idx="' + firstErr.index + '"] input[name="' + firstErr.field + '"]' : 'input[name="' + firstErr.field + '"], textarea[name="' + firstErr.field + '"]';
+      var firstInput = form.querySelector(firstSelector);
+      if (firstInput) firstInput.focus();
+    }
+    return errors;
+  }
+
+  function handleSave() {
+    var formData = collectFormData();
+    if (!formData) return;
+    var editingId = state.isNewOrder ? null : state.expandedOrderId;
+    var errors = validateForm(formData, editingId);
+    if (errors.length > 0) return;
+    var allMaterials = [];
+    for (var mi = 0; mi < formData.物料明细.length; mi++) {
+      var fm = formData.物料明细[mi];
+      allMaterials.push({
+        '零件名称': fm['零件名称'],
+        '图号': fm['图号'],
+        '图版': fm['图版'],
+        '数量': parseInt(fm['数量'], 10),
+        '承诺交期': fm['承诺交期'],
+        '当前状态': fm['当前状态'],
+        '检验结论': fm['检验结论'],
+        '状态变更历史': fm['状态变更历史']
+      });
+    }
+    var hasEarlierDelivery = false;
+    for (var di = 0; di < allMaterials.length; di++) {
+      if (allMaterials[di]['承诺交期'] < formData['下单日期']) { hasEarlierDelivery = true; break; }
+    }
+    if (hasEarlierDelivery) {
+      if (!confirm('承诺交期早于下单日期，是否确认？')) return;
+    }
+    if (state.isNewOrder) {
+      var now = nowIso();
+      var newOrder = {
+        id: generateId(),
+        '订单号': formData['订单号'],
+        '订单名称': formData['订单名称'],
+        '供应商': formData['供应商'],
+        '优先级': formData['优先级'],
+        '下单日期': formData['下单日期'],
+        '备注': formData['备注'],
+        '创建时间': now,
+        '最后修改时间': now,
+        '物料明细': allMaterials
+      };
+      state.data.orders.push(newOrder);
+      state.expandedOrderId = null;
+      state.isNewOrder = false;
+    } else {
+      for (var oi = 0; oi < state.data.orders.length; oi++) {
+        if (state.data.orders[oi].id === state.expandedOrderId) {
+          var existing = state.data.orders[oi];
+          var oldMaterials = existing.物料明细;
+          existing['订单号'] = formData['订单号'];
+          existing['订单名称'] = formData['订单名称'];
+          existing['供应商'] = formData['供应商'];
+          existing['优先级'] = formData['优先级'];
+          existing['下单日期'] = formData['下单日期'];
+          existing['备注'] = formData['备注'];
+          existing['最后修改时间'] = nowIso();
+          for (var ai = 0; ai < allMaterials.length; ai++) {
+            allMaterials[ai]['状态变更历史'] = (oldMaterials[ai] && oldMaterials[ai]['状态变更历史']) ? oldMaterials[ai]['状态变更历史'] : [];
+          }
+          existing.物料明细 = allMaterials;
+          break;
+        }
+      }
+      state.expandedOrderId = null;
+    }
+    saveData();
+    renderAll();
+  }
+
+  function handleDelete() {
+    var order = null;
+    for (var i = 0; i < state.data.orders.length; i++) {
+      if (state.data.orders[i].id === state.expandedOrderId) { order = state.data.orders[i]; break; }
+    }
+    if (!order) return;
+    var hasCompleted = order.物料明细.some(function(m) { return m['当前状态'] === '已完成'; });
+    if (hasCompleted) {
+      alert('已完成的订单不允许删除，只能改为已取消');
+      return;
+    }
+    var partNames = order.物料明细.map(function(m) { return m['零件名称']; }).join('、');
+    if (!confirm('确认删除订单？\n\n订单号：' + order['订单号'] + '\n零件名称：' + partNames + '\n\n此操作不可撤销。')) return;
+    state.data.orders = state.data.orders.filter(function(o) { return o.id !== order.id; });
+    state.expandedOrderId = null;
+    saveData();
+    renderAll();
+  }
+
+  function handleExport() {
+    var json = JSON.stringify(state.data, null, 2);
+    var blob = new Blob(['\uFEFF' + json], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '订单备份_' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportClick() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var text = ev.target.result.replace(/^\uFEFF/, '');
+        try {
+          var parsed = JSON.parse(text);
+          if (!parsed.orders || !Array.isArray(parsed.orders)) throw new Error('no orders');
+          if (typeof parsed.version !== 'number') throw new Error('no version');
+          if (parsed.version > SUPPORTED_VERSION) {
+            alert('文件格式不正确，现有数据未改动');
+            return;
+          }
+          state.importFileData = parsed;
+          showImportModal(parsed);
+        } catch (err) {
+          alert('文件格式不正确，现有数据未改动');
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
+  function showImportModal(fileData) {
+    var localCount = state.data.orders.length;
+    var fileCount = fileData.orders.length;
+    var info = '<p>当前本地数据：<strong>' + localCount + '</strong> 条订单</p>';
+    info += '<p>待导入文件：<strong>' + fileCount + '</strong> 条订单</p>';
+    info += '<p>文件版本：' + fileData.version + '</p>';
+    document.getElementById('importInfo').innerHTML = info;
+    document.querySelector('input[name="importMode"][value="merge"]').checked = true;
+    document.getElementById('overwriteConfirm').style.display = 'none';
+    document.getElementById('confirmInput').value = '';
+    document.getElementById('importResult').style.display = 'none';
+    document.getElementById('importModal').classList.add('active');
+  }
+
+  function executeImport() {
+    if (!state.importFileData) return;
+    var mode = document.querySelector('input[name="importMode"]:checked').value;
+    if (mode === 'overwrite') {
+      if (document.getElementById('confirmInput').value !== '确认覆盖') {
+        alert('请输入"确认覆盖"以确认操作');
+        return;
+      }
+    }
+    var backupRaw = localStorage.getItem(DATA_KEY);
+    if (backupRaw) {
+      var backups = [];
+      try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch (e) { backups = []; }
+      backups.push({ timestamp: nowIso(), data: backupRaw });
+      while (backups.length > 3) backups.shift();
+      try { localStorage.setItem(BACKUP_KEY, JSON.stringify(backups)); } catch (e) { /* ignore */ }
+    }
+    var result = '';
+    if (mode === 'overwrite') {
+      var prevCount = state.data.orders.length;
+      state.data = JSON.parse(JSON.stringify(state.importFileData));
+      result = '导入完成，覆盖 ' + prevCount + ' 条，新增 ' + state.data.orders.length + ' 条，保留 0 条，当前共 ' + state.data.orders.length + ' 条';
+    } else {
+      var fileOrders = state.importFileData.orders;
+      var localMap = {};
+      for (var i = 0; i < state.data.orders.length; i++) localMap[state.data.orders[i]['订单号']] = state.data.orders[i];
+      var fileMap = {};
+      for (var j = 0; j < fileOrders.length; j++) fileMap[fileOrders[j]['订单号']] = fileOrders[j];
+      var overwritten = 0, added = 0, kept = 0;
+      for (var fpo in fileMap) {
+        if (localMap[fpo]) { localMap[fpo] = JSON.parse(JSON.stringify(fileMap[fpo])); overwritten++; }
+        else { localMap[fpo] = JSON.parse(JSON.stringify(fileMap[fpo])); added++; }
+      }
+      for (var lpo in localMap) {
+        if (!fileMap[lpo]) kept++;
+      }
+      var newOrders = [];
+      for (var key in localMap) newOrders.push(localMap[key]);
+      state.data.orders = newOrders;
+      result = '导入完成，覆盖 ' + overwritten + ' 条，新增 ' + added + ' 条，保留 ' + kept + ' 条，当前共 ' + state.data.orders.length + ' 条';
+    }
+    saveData();
+    state.importFileData = null;
+    document.getElementById('importModal').classList.remove('active');
+    renderAll();
+    alert(result);
+  }
+
+  function renderAll() {
+    renderHeader();
+    renderOrderList();
+  }
+
+  function initEvents() {
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      state.searchQuery = e.target.value;
+      state.currentPage = 1;
+      state.expandedOrderId = null;
+      state.isNewOrder = false;
+      renderOrderList();
+    });
+
+    document.getElementById('statusFilter').addEventListener('change', function(e) {
+      state.statusFilter = e.target.value;
+      state.currentPage = 1;
+      state.expandedOrderId = null;
+      state.isNewOrder = false;
+      renderOrderList();
+    });
+
+    document.getElementById('priorityFilter').addEventListener('change', function(e) {
+      state.priorityFilter = e.target.value;
+      state.currentPage = 1;
+      state.expandedOrderId = null;
+      state.isNewOrder = false;
+      renderOrderList();
+    });
+
+    document.getElementById('btnNewOrder').addEventListener('click', function() {
+      state.expandedOrderId = '__new__';
+      state.isNewOrder = true;
+      renderOrderList();
+    });
+
+    document.getElementById('orderListContainer').addEventListener('click', function(e) {
+      var sortTh = e.target.closest('.col-sort');
+      if (sortTh) {
+        var field = sortTh.dataset.sort;
+        if (state.sortField === field) {
+          state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortField = field;
+          state.sortDir = 'desc';
+        }
+        renderOrderList();
+        return;
+      }
+      var pageBtn = e.target.closest('.pager button');
+      if (pageBtn) {
+        if (pageBtn.dataset.page === 'prev' && state.currentPage > 1) state.currentPage--;
+        if (pageBtn.dataset.page === 'next') state.currentPage++;
+        state.expandedOrderId = null;
+        state.isNewOrder = false;
+        renderOrderList();
+        return;
+      }
+      if (e.target.closest('.expand-area')) return;
+      var row = e.target.closest('.order-row');
+      if (row) {
+        var id = row.dataset.id;
+        if (state.expandedOrderId === id && !state.isNewOrder) {
+          state.expandedOrderId = null;
+        } else {
+          state.expandedOrderId = id;
+          state.isNewOrder = false;
+        }
+        renderOrderList();
+      }
+    });
+
+    document.getElementById('orderListContainer').addEventListener('click', function(e) {
+      if (e.target.id === 'btnAddMaterial' || e.target.closest('#btnAddMaterial')) {
+        var form = document.getElementById('orderForm');
+        if (!form) return;
+        var tbody = form.querySelector('#materialTable tbody');
+        var idx = tbody.querySelectorAll('tr').length;
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = '<table><tbody>' + renderMaterialRow(emptyMaterial(), idx) + '</tbody></table>';
+        tbody.appendChild(tempDiv.querySelector('tr'));
+        return;
+      }
+      if (e.target.dataset.removeMat !== undefined || (e.target.closest('[data-remove-mat]'))) {
+        var btn = e.target.closest('[data-remove-mat]') || e.target;
+        var tr = btn.closest('tr');
+        if (tr) tr.remove();
+        return;
+      }
+      if (e.target.id === 'btnSaveOrder' || e.target.closest('#btnSaveOrder')) {
+        handleSave();
+        return;
+      }
+      if (e.target.id === 'btnCancelEdit' || e.target.closest('#btnCancelEdit')) {
+        state.expandedOrderId = null;
+        state.isNewOrder = false;
+        renderOrderList();
+        return;
+      }
+      if (e.target.id === 'btnDeleteOrder' || e.target.closest('#btnDeleteOrder')) {
+        handleDelete();
+        return;
+      }
+    });
+
+    document.getElementById('btnExport').addEventListener('click', handleExport);
+    document.getElementById('btnImport').addEventListener('click', handleImportClick);
+
+    document.getElementById('importCancelBtn').addEventListener('click', function() {
+      state.importFileData = null;
+      document.getElementById('importModal').classList.remove('active');
+    });
+
+    document.getElementById('importConfirmBtn').addEventListener('click', executeImport);
+
+    document.querySelectorAll('input[name="importMode"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        document.getElementById('overwriteConfirm').style.display = this.value === 'overwrite' ? 'block' : 'none';
+        document.getElementById('confirmInput').value = '';
+      });
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 's') {
+        if (document.getElementById('orderForm')) {
+          e.preventDefault();
+          handleSave();
+        }
+      }
+      if (e.key === 'Escape') {
+        if (document.getElementById('importModal').classList.contains('active')) {
+          state.importFileData = null;
+          document.getElementById('importModal').classList.remove('active');
+        } else if (state.expandedOrderId) {
+          state.expandedOrderId = null;
+          state.isNewOrder = false;
+          renderOrderList();
+        }
+      }
+    });
+  }
+
+  function init() {
+    var ok = loadData();
+    if (!ok) {
+      var raw = localStorage.getItem(DATA_KEY) || '';
+      setTimeout(function() {
+        if (confirm('本地数据已损坏，请尝试导入备份。\n\n是否查看原始数据以便手动复制抢救？')) {
+          prompt('请复制以下原始数据：', raw);
+        }
+      }, 100);
+    }
+    renderAll();
+    initEvents();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
