@@ -507,7 +507,7 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
     var form = document.getElementById('orderForm');
     var errors = [];
     form.querySelectorAll('.field-error').forEach(function(el) { el.textContent = ''; });
-    var fields = ['订单号', '订单名称', '供应商', '下单日期'];
+    var fields = ['订单号'];
     for (var f = 0; f < fields.length; f++) {
       if (!data[fields[f]]) errors.push({ field: fields[f], msg: '请填写' + fields[f] });
     }
@@ -515,14 +515,11 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
     for (var i = 0; i < data.物料明细.length; i++) {
       var m = data.物料明细[i];
       var prefix = '物料' + (i + 1);
-      if (!m['零件名称']) errors.push({ field: '零件名称', index: i, msg: prefix + '：请填写零件名称' });
       if (!m['图号']) errors.push({ field: '图号', index: i, msg: prefix + '：请填写图号' });
-      if (!m['图版']) errors.push({ field: '图版', index: i, msg: prefix + '：请填写图版' });
-      else if (!/^[A-Z]\.\d+$/.test(m['图版'])) errors.push({ field: '图版', index: i, msg: prefix + '：图版格式应为大写字母.数字，如 A.1' });
       if (!m['数量']) errors.push({ field: '数量', index: i, msg: prefix + '：请填写数量' });
       else { var q = parseInt(m['数量'], 10); if (String(q) !== m['数量'] || q < 1) errors.push({ field: '数量', index: i, msg: '数量必须是不小于 1 的整数' }); }
-      if (!m['承诺交期']) errors.push({ field: '承诺交期', index: i, msg: prefix + '：请填写承诺交期' });
-      else if (!/^\d{4}-\d{2}-\d{2}$/.test(m['承诺交期'])) errors.push({ field: '承诺交期', index: i, msg: '日期格式应为 2026-09-08' });
+      if (m['图版'] && !/^[A-Z]\.\d+$/.test(m['图版'])) errors.push({ field: '图版', index: i, msg: prefix + '：图版格式应为大写字母.数字，如 A.1' });
+      if (m['承诺交期'] && !/^\d{4}-\d{2}-\d{2}$/.test(m['承诺交期'])) errors.push({ field: '承诺交期', index: i, msg: '日期格式应为 2026-09-08' });
       if (m['零件名称'] && m['零件名称'].length > 50) errors.push({ field: '零件名称', index: i, msg: '零件名称最多 50 个字符' });
     }
     if (!errors.some(function(e) { return e.field === '订单号'; })) {
@@ -780,7 +777,7 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
   function buildMaterialsFromCSV(rows) {
     if (rows.length < 2) return { materials: [], errors: ['文件为空或只有表头'] };
     var headers = rows[0].map(function(h) { return h.trim(); });
-    var required = ['零件名称', '图号', '图版', '数量', '承诺交期'];
+    var required = ['图号', '数量'];
     for (var r = 0; r < required.length; r++) {
       if (headers.indexOf(required[r]) === -1) return { materials: [], errors: ['缺少列：' + required[r]] };
     }
