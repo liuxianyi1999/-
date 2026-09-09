@@ -25,6 +25,8 @@ body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-size:14px;color
 .toolbar select{padding:6px 10px;border:1px solid #ccc;font-size:14px}
 .btn-primary{padding:6px 16px;background:#333;color:#fff;border:none;cursor:pointer;font-size:14px}
 .btn-primary:hover{background:#555}
+.btn-secondary{padding:6px 16px;background:#fff;color:#333;border:1px solid #ccc;cursor:pointer;font-size:14px}
+.btn-secondary:hover{background:#f5f5f5}
 .btn-danger{padding:6px 16px;background:#c00;color:#fff;border:none;cursor:pointer;font-size:14px}
 .btn-danger:hover{background:#e00}
 table{width:100%;border-collapse:collapse}
@@ -126,6 +128,8 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
         <option value="中">中</option>
         <option value="低">低</option>
       </select>
+      <button class="btn-secondary" id="btnImportMaterials">按模板导入物料</button>
+      <a id="btnDownloadTemplate" style="font-size:13px;color:#333;text-decoration:underline;cursor:pointer">下载模板</a>
       <button class="btn-primary" id="btnNewOrder">新增订单</button>
     </div>
     <div id="orderListContainer"></div>
@@ -751,6 +755,109 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
     renderOrderList();
   }
 
+  function parseCSV(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.substring(1);
+    var rows = [], row = [], field = '', inQ = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (i + 1 < text.length && text[i + 1] === '"') { field += '"'; i++; }
+          else inQ = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\r') { if (i + 1 < text.length && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else field += c;
+      }
+    }
+    if (field || row.length > 0) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function buildMaterialsFromCSV(rows) {
+    if (rows.length < 2) return { materials: [], errors: ['文件为空或只有表头'] };
+    var headers = rows[0].map(function(h) { return h.trim(); });
+    var required = ['零件名称', '图号', '图版', '数量', '承诺交期'];
+    for (var r = 0; r < required.length; r++) {
+      if (headers.indexOf(required[r]) === -1) return { materials: [], errors: ['缺少列：' + required[r]] };
+    }
+    var materials = [], errors = [];
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (row.length === 1 && row[0].trim() === '') continue;
+      var d = {};
+      for (var j = 0; j < headers.length; j++) d[headers[j]] = (row[j] || '').trim();
+      var qty = parseInt(d['数量'], 10);
+      if (String(qty) !== d['数量'] || qty < 1) { errors.push('第' + (i + 1) + '行：数量必须是不小于1的整数'); continue; }
+      materials.push({
+        '零件名称': d['零件名称'] || '', '图号': d['图号'] || '', '图版': d['图版'] || '',
+        '数量': qty, '承诺交期': d['承诺交期'] || '', '当前状态': d['当前状态'] || '待排产',
+        '检验结论': null, '状态变更历史': [{ '时间': nowIso(), '从': '（新建）', '到': d['当前状态'] || '待排产', '操作备注': '' }]
+      });
+    }
+    return { materials: materials, errors: errors };
+  }
+
+  function handleImportMaterials() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var result = buildMaterialsFromCSV(parseCSV(ev.target.result));
+        if (result.errors.length > 0) { alert(result.errors.join('\n')); return; }
+        if (result.materials.length === 0) { alert('未解析到有效物料数据'); return; }
+        if (state.expandedOrderId && !state.isNewOrder) {
+          var tbody = document.querySelector('#materialTable tbody');
+          if (tbody) {
+            tbody.innerHTML = '';
+            for (var i = 0; i < result.materials.length; i++) {
+              var tempDiv = document.createElement('div');
+              tempDiv.innerHTML = '<table><tbody>' + renderMaterialRow(result.materials[i], i) + '</tbody></table>';
+              tbody.appendChild(tempDiv.querySelector('tr'));
+            }
+          }
+        } else {
+          state.expandedOrderId = '__new__';
+          state.isNewOrder = true;
+          renderOrderList();
+          setTimeout(function() {
+            var tbody = document.querySelector('#materialTable tbody');
+            if (tbody) {
+              tbody.innerHTML = '';
+              for (var j = 0; j < result.materials.length; j++) {
+                var tempDiv = document.createElement('div');
+                tempDiv.innerHTML = '<table><tbody>' + renderMaterialRow(result.materials[j], j) + '</tbody></table>';
+                tbody.appendChild(tempDiv.querySelector('tr'));
+              }
+            }
+          }, 0);
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
+  function downloadTemplate() {
+    var csv = '\uFEFF零件名称,图号,图版,数量,承诺交期,当前状态\n密封件1,L258A0155,A.3,35,2026-10-05,待排产\n';
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '物料导入模板.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function initEvents() {
     document.getElementById('searchInput').addEventListener('input', function(e) {
       state.searchQuery = e.target.value;
@@ -780,6 +887,12 @@ th{background:#f5f5f5;font-weight:bold;white-space:nowrap}
       state.expandedOrderId = '__new__';
       state.isNewOrder = true;
       renderOrderList();
+    });
+
+    document.getElementById('btnImportMaterials').addEventListener('click', handleImportMaterials);
+    document.getElementById('btnDownloadTemplate').addEventListener('click', function(e) {
+      e.preventDefault();
+      downloadTemplate();
     });
 
     document.getElementById('orderListContainer').addEventListener('click', function(e) {
